@@ -1,0 +1,138 @@
+import os
+
+import random
+import discord
+from discord.ext import commands
+from discord.utils import *
+import pause
+from datetime import datetime
+import youtube_dl
+import os
+import urllib.request
+import re
+import pafy
+
+Token = "ODM1MzM3ODI1MTYzMjgwMzk0.YIN--Q.LohtHQGScIgl15KEON6Fe_ONaps"
+
+client = commands.Bot(command_prefix = ".")
+players = {}
+
+@client.event
+async def on_ready():
+	print("bot is ready")
+
+@client.event
+async def on_member_join(ctx, member):
+	await ctx.send(f"{member} has joined! Welcome, {member}")
+
+@client.event
+async def on_member_remove(ctx, member):
+	await ctx.send(f"{member} has left the server")
+# @client.command()
+# async def ping(ctx):
+# 	await ctx.send(f"Pong {round(client.latency * 1000)}ms")
+
+# 51	- @client.command(pass_context=True)
+# 52	- async def join(ctx):
+# 53	-     channel = ctx.message.author.voice.channel
+# 54	-     await channel.connect()
+
+@client.command(aliases = ["eightball", "8ball"])
+async def _8ball(ctx, *, question):
+	responces = [
+		"Don’t count on it.",
+		"It is certain.",
+		"It is decidedly so.",
+		"Most likely.",
+		"My reply is no.",
+		"My sources say no.",
+		"Outlook not so good.",
+		"Outlook good.,"
+		"Reply hazy, try again.",
+		"Signs point to yes.",
+		"Very doubtful.",
+		"Without a doubt.",
+		"Yes.",
+		"Yes – definitely.",
+		"You may rely on it.",
+		"Not clear",
+		"No answer visible",
+		"Answer hazy, try again later",
+		"Better not tell you now"
+	]
+	await ctx.send(f"{question}\nAnswer: {random.choice(responces)}")
+
+@client.command(pass_context = True)
+async def leave(ctx):
+	voice = discord.utils.get(client.voice_clients, guild = ctx.guild)
+	server = ctx.message.guild.voice_client
+	if voice.is_connected():
+		await server.disconnect()
+	else:
+		await ctx.send("The bot is not connected to any Voice Channel")
+@client.command()
+async def join(ctx):
+	channel = ctx.message.author.voice.channel
+	voice = discord.utils.get(client.voice_clients, guild=ctx.guild)
+	if (voice == None):
+		await channel.connect()
+	else:
+		await ctx.send("Bot is already connected")
+
+@client.command()
+async def play(ctx, url : str):
+	song_there = os.path.isfile("song.mp3")
+	try:
+		if (song_there):
+			os.remove("song.mp3")
+	except PermissionError:
+		await ctx.send("Wait for the playing song to end, or use the stop command")
+	voice = discord.utils.get(client.voice_clients, guild = ctx.guild)
+
+	ydl_opts = {
+		'format' : 'bestaudio/best',
+		'postprocessors' : [{
+			'key' : 'FFmpegExtractAudio',
+			'preferredcodec' : 'mp3',
+			'preferredquality' : '192',
+		}],
+	}
+	with youtube_dl.YoutubeDL(ydl_opts) as ydl:
+		ydl.download([url])
+	for file in os.listdir('./'):
+		if (file.endswith(".mp3")):
+			os.rename(file, "song.mp3")
+	voice.play(discord.FFmpegPCMAudio("song.mp3"))
+	await ctx.send(f"Playing {url} now")
+
+
+@client.command()
+async def pause(ctx):
+	voice = discord.utils.get(client.voice_clients, guild = ctx.guild)
+	if (voice.is_playing()):
+		voice.pause()
+	else:
+		await ctx.send("There is no audio playing")
+
+@client.command()
+async def resume(ctx):
+	voice = discord.utils.get(client.voice_clients, guild = ctx.guild)
+	if (voice.is_paused()):
+		voice.resume()
+	else:
+		await ctx.send("There is no paused audio")
+@client.command()
+async def upload(ctx, youtuber):
+	html = urllib.request.urlopen("https://www.youtube.com/results?search_query=" + youtuber)
+	video_ids = re.findall(r"watch\?v=(\S{11})", html.read().decode())
+	url = "https://www.youtube.com/watch?v=" + video_ids[0]
+	video = pafy.new(url)
+	await ctx.send(youtuber + "'s latest Video!")
+	ctx.send(video.title)
+	await ctx.send("here's the link: https://www.youtube.com/watch?v=" + video_ids[0])
+
+
+	
+
+client.run(Token)
+
